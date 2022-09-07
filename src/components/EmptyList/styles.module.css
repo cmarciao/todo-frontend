@@ -1,0 +1,15 @@
+.emptyList {
+    text-align: center;
+    color: var(--gray-300);
+    
+    border-top: 1px solid #333333;
+    border-radius: 8px;
+    
+    padding: 4rem 0;
+}
+
+.emptyList div p:first-child {
+    font-weight: bold;
+
+    margin-top: 1rem;
+}
