@@ -1,5 +1,5 @@
 interface ITodo {
-    id: string;
+    _id?: string;
     title: string;
     isCompleted: boolean;
     created_at: Date;

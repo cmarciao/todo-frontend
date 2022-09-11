@@ -1,14 +1,16 @@
-import { FormEvent, useState } from "react";
-import { v4 as uuid } from "uuid";
+import { FormEvent, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 import { Header } from "../../components/Header";
+import { TodoItem } from "../../components/TodoItem";
 import { EmptyList } from "../../components/EmptyList";
 
 import plusCircleImg from "../../assets/plus-circle.svg";
 
-import styles from "./styles.module.css";
+import { api } from "../../services/api";
 import { ITodo } from "../../types/Todo";
-import { TodoItem } from "../../components/TodoItem";
+
+import styles from "./styles.module.css";
 
 type IListActiveProps = "todo" | "done"
 
@@ -20,40 +22,68 @@ export function TodoList() {
     const todoList = list.filter(todo => !todo.isCompleted)
     const completedTodoList = list.filter(todo => todo.isCompleted)
 
-    function handleDeleteTodo(id: string) {
-        const oldList = [...list];
-        const newList = oldList.filter(todo => todo.id !== id);
-
-        setList(newList);
+    useEffect(() => {
+        getTodos();
+    }, []);
+    
+    async function getTodos() {
+        await api.get("/todos").then(response => {
+            setList(response.data);   
+        });
     }
 
+    async function handleDeleteTodo(id: string) {
+        toast.promise(api.delete(`/todos/${id}`).then(() => {
+            const oldList = [...list];
+            const newList = oldList.filter(todo => todo._id !== id);
+    
+            setList(newList);
+        }), {
+            success: "Tarefa deletada. 😁",
+            pending: "Deletando tarefa... 👀",
+            error: "Erro ao deletar tarefa. 😧"
+        });
+    }
+    
+    function handleChangeStatusTodo(id: string, isCompleted: boolean) {
+        const sucessMessage = 
+            isCompleted ? "Tarefa concluída. 👏" : "Tarefa desmarcada. ✅ ";
+        
+        const errorMessage = 
+            isCompleted ? "Erro ao concluir tarefa. 😧" : "Erro ao desmarcar tarefa. 😧";
+        
+        toast.promise(api.patch(`/todos/${id}`, { isCompleted }).then(response => {
+            const newList = [...list];
+    
+            newList.forEach((todo) => {
+                if(id === todo._id) {
+                    todo.isCompleted = response.data.isCompleted;
+                }
+            });
+    
+            setList(newList);
+        }), {
+            success: sucessMessage,
+            pending: "Alterando status da tarefa... 👀",
+            error: errorMessage
+        });
+    }
+    
     function handleCreateNewTodo(event: FormEvent) {
         event.preventDefault();
-
-        const newTodo: ITodo = {
-            id: uuid(),
-            title,
-            isCompleted: false,
-            created_at: new Date()
-        }
-
-        setTitle("");
-        setList(list => [...list, newTodo]);
+        
+        toast.promise(api.post("/todos", { title }).then(response => {
+            const todo = response.data;
+            
+            setTitle("");
+            setList(list => [...list, todo]);
+        }), {
+            success: "Tarefa criada. 🥳",
+            pending: "Criando tarefa... 👀",
+            error: "Erro ao criar tarefa. 😧"
+        });
     }
 
-    function handleChangeStatusTodo(id: string) {
-        const newList = [...list];
-
-        console.log(id)
-
-        newList.forEach((todo) => {
-            if(id === todo.id) {
-                todo.isCompleted = !todo.isCompleted;
-            }
-        })
-
-        setList(newList);
-    }
 
     return (
         <>
@@ -102,7 +132,7 @@ export function TodoList() {
                         ) : (
                             listActive === "todo" && todoList.map(todo => (
                                 <TodoItem
-                                    key={todo.id}
+                                    key={todo._id}
                                     todo={todo}
                                     handleDeleteTodo={handleDeleteTodo}
                                     handleChangeStatusTodo={handleChangeStatusTodo}
@@ -115,7 +145,7 @@ export function TodoList() {
                         ) : (
                             listActive === "done" && completedTodoList.map(todo => (
                                 <TodoItem
-                                    key={todo.id}
+                                    key={todo._id}
                                     todo={todo}
                                     handleDeleteTodo={handleDeleteTodo}
                                     handleChangeStatusTodo={handleChangeStatusTodo}
